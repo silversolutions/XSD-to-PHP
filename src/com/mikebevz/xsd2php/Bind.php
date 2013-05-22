@@ -107,6 +107,9 @@ class Bind extends Common {
                 if (property_exists($model, $name)) {
                     $doc = new \DOMDocument();
                     $doc->appendChild($doc->importNode($child, true));
+                    if (substr($className, -2) === '[]') {
+                        $className = substr($className, 0, strlen($className)-2);
+                    }
                     $model->{$name} = $this->bindXml($doc->saveXml(), new $className());
                 } else {
                     throw new \RuntimeException('Class'. get_class($model). ' does not have property '.$name);
