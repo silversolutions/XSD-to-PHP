@@ -1,9 +1,10 @@
 #!/usr/bin/php -q
 <?php
 set_include_path(get_include_path().
-    PATH_SEPARATOR.realpath("../../lib/ZF/1.10.7"));
+    PATH_SEPARATOR.realpath(__DIR__."/../../lib/ZF/1.10.7"));
 
-require_once '../com/mikebevz/xsd2php/LegkoXML.php';
+//require_once '../com/mikebevz/xsd2php/LegkoXML.php';
+require_once 'ezpublish/autoload.php';
 require_once 'Zend/Console/Getopt.php';
 //require_once '../../lib/ZF/1.10.7/Zend/Exception.php';
 //require_once '../../lib/ZF/1.10.7/Zend/Console/Getopt/Exception.php';
