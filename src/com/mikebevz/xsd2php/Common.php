@@ -156,7 +156,7 @@ class Common {
         }
         
         if (array_key_exists($shortNs, $this->namespaces)) {
-            return $this->namespaces[$shortNs];    
+            return isset($this->namespaces[$shortNs]) ? $this->namespaces[$shortNs] : null;
         } else {
             return $shortNs;
         }    
