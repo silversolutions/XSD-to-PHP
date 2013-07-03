@@ -207,18 +207,15 @@ class Php2Xml extends Common {
             $propXmlNamespace   = isset($propDocs['xmlNamespace']) ? $propDocs['xmlNamespace'] : null;
             $propXmlName        = isset($propDocs['xmlName']) ? $propDocs['xmlName'] : null;
             $propXmlType        = isset($propDocs['xmlType']) ? $propDocs['xmlType'] : null;
+            if (is_string($propXmlNamespace) && $propXmlNamespace !== '') {
+                $code = $this->getNsCode($propXmlNamespace);
+                $propXmlName = $code.":".$propXmlName;
+            }
             //print_r($prop->getDocComment());
             if (is_object($prop->getValue($obj))) {
-                $code = '';
                 //print($propDocs['xmlName']."\n");
-                if (array_key_exists('xmlNamespace', $propDocs)) {
-                    $code = $this->getNsCode($propXmlNamespace);
-                    $el = $this->dom->createElement($code.":".$propXmlName);
-                    $el = $this->parseObjectValue($prop->getValue($obj), $el);
-                } else {
-                    $el = $this->dom->createElement($propXmlName);
-                    $el = $this->parseObjectValue($prop->getValue($obj), $el);
-                }
+                $el = $this->dom->createElement($propXmlName);
+                $el = $this->parseObjectValue($prop->getValue($obj), $el);
                 //print_r("Value is object in Parse\n");
                 
                 $element->appendChild($el);
@@ -226,21 +223,20 @@ class Php2Xml extends Common {
                 if ($prop->getValue($obj) != '') {
                     if ($propXmlType == 'element') {
                         $el = '';
-                        $code = $this->getNsCode($propXmlNamespace);
                         $value = $prop->getValue($obj);
                         
                         if (is_array($value)) {
-                            $this->logger->debug("Creating element:".$code.":".$propXmlName);
+                            $this->logger->debug("Creating element:".$propXmlName);
                             $this->logger->debug(print_r($value, true));
                             foreach ($value as $node) {
                                 $this->logger->debug(print_r($node, true));
-                                $el = $this->dom->createElement($code.":".$propXmlName);
+                                $el = $this->dom->createElement($propXmlName);
                                 $arrNode = $this->parseObjectValue($node, $el);
                                 $element->appendChild($arrNode);
                             }
                             
                         } else {
-                            $el = $this->dom->createElement($code.":".$propXmlName, $value);
+                            $el = $this->dom->createElement($propXmlName, $value);
                             $element->appendChild($el);
                         }
                         //print_r("Added element ".$propDocs['xmlName']." with NS = ".$propDocs['xmlNamespace']." \n");
