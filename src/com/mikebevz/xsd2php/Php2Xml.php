@@ -79,10 +79,14 @@ class Php2Xml extends Common {
             if (isset($data['value']) && is_array($data['value'])) {
                 $elName = array_reverse(explode("\\",$name));
                 $namespace = isset($data['xmlNamespace']) ? $data['xmlNamespace'] : null;
-                $code = $this->getNsCode($namespace);
+                $elementName = $elName[0];
+                if ($namespace !== null && !empty($namespace)) {
+                    $code = $this->getNsCode($namespace);
+                    $elementName = $code . ':' . $elementName;
+                }
                 foreach ($data['value'] as $arrEl) {
                     //@todo fix this workaroung. it's only works for one level array
-                    $dom = $this->dom->createElement($code.":".$elName[0]);
+                    $dom = $this->dom->createElement($elementName);
                     $this->parseObjectValue($arrEl, $dom);
                     $this->root->appendChild($dom); 
                 }
