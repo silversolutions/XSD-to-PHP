@@ -252,8 +252,24 @@ class Php2Xml extends Common {
                     } elseif ($propXmlType == 'value') {
                         
                         $this->logger->debug(print_r($prop->getValue($obj), true));
-                        
-                        $txtNode = $this->dom->createTextNode($prop->getValue($obj));
+
+                        // handle CDATA, if CDATA tags are available
+                        if (
+                            strpos($prop->getValue($obj), '<![CDATA[') === 0
+                            && strpos($prop->getValue($obj), ']]>') !== false
+                        ) {
+                            // replace text <![CDATA[ and ]]>
+                            $cdataValue = str_replace(
+                                array('<![CDATA[', ']]>'),
+                                array('', ''),
+                                $prop->getValue($obj)
+                            );
+                            $txtNode = $this->dom->createCDATASection($cdataValue);
+                        } else {
+                            // normal handling
+                            $txtNode = $this->dom->createTextNode($prop->getValue($obj));
+                        }
+
                         $element->appendChild($txtNode);
                     } 
                 }
