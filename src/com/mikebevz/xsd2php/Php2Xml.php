@@ -211,6 +211,7 @@ class Php2Xml extends Common {
             $propXmlNamespace   = isset($propDocs['xmlNamespace']) ? $propDocs['xmlNamespace'] : null;
             $propXmlName        = isset($propDocs['xmlName']) ? $propDocs['xmlName'] : null;
             $propXmlType        = isset($propDocs['xmlType']) ? $propDocs['xmlType'] : null;
+            $propVar            = isset($propDocs['var']) ? $propDocs['var'] : null;
             if (is_string($propXmlNamespace) && $propXmlNamespace !== '') {
                 $code = $this->getNsCode($propXmlNamespace);
                 $propXmlName = $code.":".$propXmlName;
@@ -232,13 +233,18 @@ class Php2Xml extends Common {
                         if (is_array($value)) {
                             $this->logger->debug("Creating element:".$propXmlName);
                             $this->logger->debug(print_r($value, true));
-                            foreach ($value as $node) {
-                                $this->logger->debug(print_r($node, true));
-                                $el = $this->dom->createElement($propXmlName);
-                                $arrNode = $this->parseObjectValue($node, $el);
-                                $element->appendChild($arrNode);
+                            // if PHP type of the property is array, convert it recursively into appropriate XML tree
+                            if ($propVar === 'array') {
+                                $this->appendArrayToDomElement($value, $element, $this->dom);
+                            } else {
+                                foreach ($value as $node) {
+                                    $this->logger->debug(print_r($node, true));
+                                    $el = $this->dom->createElement($propXmlName);
+                                    $arrNode = $this->parseObjectValue($node, $el);
+                                    $element->appendChild($arrNode);
+                                }
                             }
-                            
+
                         } else {
                             $el = $this->dom->createElement($propXmlName, $value);
                             $element->appendChild($el);
@@ -277,5 +283,23 @@ class Php2Xml extends Common {
         }
         
         return $element;
+    }
+
+    protected function appendArrayToDomElement(array $data, \DOMElement $element, \DOMDocument $dom = null)
+    {
+        if (!$dom instanceof \DOMDocument) {
+            $dom = new \DOMDocument();
+        }
+
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $newElement = $dom->createElement($key);
+                $element->appendChild($newElement);
+                $this->appendArrayToDomElement($value, $element, $dom);
+            } else {
+                $newElement = $dom->createElement($key, (string) $value);
+                $element->appendChild($newElement);
+            }
+        }
     }
 }
