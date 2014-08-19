@@ -292,10 +292,10 @@ class Php2Xml extends Common {
         }
 
         foreach ($data as $key => $value) {
+            if (is_int($key)) {
+                $key = 'index_' . $key;
+            }
             if (is_array($value)) {
-                if (is_int($key)) {
-                    $key = 'index_' . $key;
-                }
                 $newElement = $dom->createElement($key);
                 $element->appendChild($newElement);
                 $this->appendArrayToDomElement($value, $element, $dom);
