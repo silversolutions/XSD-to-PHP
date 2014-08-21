@@ -293,12 +293,35 @@ class Php2Xml extends Common {
 
         foreach ($data as $key => $value) {
             if (is_int($key)) {
-                $key = 'index_' . $key;
-            }
-            if (is_array($value)) {
+                $parentElement = $element->parentNode;
+                if ($parentElement === null) {
+                    $key = 'index_' . $key;
+                    if (is_array($value)) {
+                        $newElement = $dom->createElement($key);
+                        $element->appendChild($newElement);
+                        $this->appendArrayToDomElement($value, $newElement, $dom);
+                        if( is_int(key($value)) ) {
+                            $element->removeChild($newElement);
+                        }
+                    } else {
+                        $newElement = $dom->createElement($key, $value);
+                        $element->appendChild($newElement);
+                    }
+                } elseif( is_array($value) ) {
+                    $newElement = $dom->createElement($element->nodeName);
+                    $parentElement->appendChild($newElement);
+                    $this->appendArrayToDomElement($value, $newElement, $dom);
+                } else {
+                    $newElement = $dom->createElement($element->nodeName, (string) $value);
+                    $parentElement->appendChild($newElement);
+                }
+            } elseif (is_array($value)) {
                 $newElement = $dom->createElement($key);
                 $element->appendChild($newElement);
-                $this->appendArrayToDomElement($value, $element, $dom);
+                $this->appendArrayToDomElement($value, $newElement, $dom);
+                if( is_int(key($value)) ) {
+                    $element->removeChild($newElement);
+                }
             } else {
                 $newElement = $dom->createElement($key, (string) $value);
                 $element->appendChild($newElement);
