@@ -1,0 +1,23 @@
+{
+    "name": "moyarada/XSD-to-PHP",
+    "type": "library",
+    "description": "DESC moyarada/XSD-to-PHP DESC",
+    "keywords": [ "shop" ],
+    "homepage": "http://www.silversolutions.de/Produkte",
+    "license": "",
+    "version": "dev-origin-fix",
+    "authors": [
+        {
+            "name": "silver.solutions GmbH",
+            "homepage": "http://www.silversolutions.de/"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.0"
+    },
+    "autoload": {
+        "psr-0": {
+            "com\\mikebevz\\xsd2php": "src/"
+        }
+    }
+}
