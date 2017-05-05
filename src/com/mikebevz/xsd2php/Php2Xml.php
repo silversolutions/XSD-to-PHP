@@ -304,16 +304,14 @@ class Php2Xml extends Common {
                             $element->removeChild($newElement);
                         }
                     } else {
-                        $newElement = $dom->createElement($key, $value);
-                        $element->appendChild($newElement);
+                        $this->appendNewTextElement($dom, $element, $key, $value);
                     }
                 } elseif( is_array($value) ) {
                     $newElement = $dom->createElement($element->nodeName);
                     $parentElement->appendChild($newElement);
                     $this->appendArrayToDomElement($value, $newElement, $dom);
                 } else {
-                    $newElement = $dom->createElement($element->nodeName, (string) $value);
-                    $parentElement->appendChild($newElement);
+                    $this->appendNewTextElement($dom, $parentElement, $element->nodeName, $value);
                 }
             } elseif (is_array($value)) {
                 $newElement = $dom->createElement($key);
@@ -323,9 +321,21 @@ class Php2Xml extends Common {
                     $element->removeChild($newElement);
                 }
             } else {
-                $newElement = $dom->createElement($key, (string) $value);
-                $element->appendChild($newElement);
+                $this->appendNewTextElement($dom, $element, $key, $value);
             }
         }
+    }
+
+    /**
+     * @param \DOMDocument $dom
+     * @param \DOMElement $parent
+     * @param string $key
+     * @param string $value
+     */
+    protected function appendNewTextElement(\DOMDocument $dom, \DOMElement $parent, $key, $value)
+    {
+        $encoded = \htmlentities((string) $value, ENT_XML1|ENT_COMPAT);
+        $newElement = $dom->createElement($key, $encoded);
+        $parent->appendChild($newElement);
     }
 }
