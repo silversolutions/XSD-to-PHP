@@ -100,7 +100,7 @@ class Bind extends Common {
                 throw new \RuntimeException($e->getMessage().". Class ".get_class($model));
             }
             $docs = $this->parseDocComments($propertyDocs);
-            $className = $docs['var'];
+            $className = isset($docs['var']) ? $docs['var'] : '';
             
             
             if ($this->hasChild($child)) {
@@ -123,8 +123,7 @@ class Bind extends Common {
                     //print_r($className."\n");
                     $propertyDocs = $refl->getProperty($name)->getDocComment();
                     $docs = $this->parseDocComments($propertyDocs);
-                    $type = $docs['xmlType'];
-                    print_r("Type: ". $type."\n");
+                    $type = isset($docs['xmlType']) ? $docs['xmlType'] : null;
                     if ($type == 'attribute') {
                         $model->{$name} = $child->nodeValue;      
                     } elseif ($type == 'element') {
@@ -186,7 +185,7 @@ class Bind extends Common {
                if (!class_exists($child->nodeName)) {
                     $propertyDocs = $refl->getProperty($child->nodeName)->getDocComment();
                     $docs = $this->parseDocComments($propertyDocs);
-                    $type = $docs['xmlType'];
+                    $type = isset($docs['xmlType']) ? $docs['xmlType'] : null;
                     if ($type == 'attribute') {
                         $model->{$child->nodeName} = $child->nodeValue;      
                     } else {

@@ -51,10 +51,14 @@ class Php2Xml extends Common {
         }
         
         // @todo implement logger injection
-        if (class_exists('\Zend_Registry')) { // this does not work due to PHP bug @see http://bugs.php.net/bug.php?id=46813
-            $this->logger = \Zend_Registry::get('logger');
-        } else {
-            $this->logger = new NullLogger(); 
+        try {
+            if (class_exists('\Zend_Registry')) { // this does not work due to PHP bug @see http://bugs.php.net/bug.php?id=46813
+                $this->logger = \Zend_Registry::get('logger');
+            } else {
+                $this->logger = new NullLogger();
+            }
+        } catch (\Exception $zendException) {
+            $this->logger = new NullLogger();
         }
         
         $this->buildXml();
@@ -72,12 +76,17 @@ class Php2Xml extends Common {
         $propDocs = $this->parseClass($this->phpClass, $this->dom, true);
         
         foreach ($propDocs as $name => $data) {
-            if (is_array($data['value'])) {
+            if (isset($data['value']) && is_array($data['value'])) {
                 $elName = array_reverse(explode("\\",$name));
-                $code = $this->getNsCode($data['xmlNamespace']);
+                $namespace = isset($data['xmlNamespace']) ? $data['xmlNamespace'] : null;
+                $elementName = $elName[0];
+                if ($namespace !== null && !empty($namespace)) {
+                    $code = $this->getNsCode($namespace);
+                    $elementName = $code . ':' . $elementName;
+                }
                 foreach ($data['value'] as $arrEl) {
                     //@todo fix this workaroung. it's only works for one level array
-                    $dom = $this->dom->createElement($code.":".$elName[0]);
+                    $dom = $this->dom->createElement($elementName);
                     $this->parseObjectValue($arrEl, $dom);
                     $this->root->appendChild($dom); 
                 }
@@ -94,29 +103,31 @@ class Php2Xml extends Common {
     
     
     private function parseClass($object, $dom, $rt = false) {
-        $refl = new \ReflectionClass($object);
-        $docs = $this->parseDocComments($refl->getDocComment());
-        
-        if ($docs['xmlNamespace'] != '') {
+        $refl           = new \ReflectionClass($object);
+        $docs           = $this->parseDocComments($refl->getDocComment());
+        $xmlName        = isset($docs['xmlName']) ? $docs['xmlName'] : null;
+        $xmlNamespace   = isset($docs['xmlNamespace']) ? $docs['xmlNamespace'] : null;
+
+        if ($xmlNamespace !== null && $xmlNamespace != '') {
             $code = '';
             if (is_object($this->root)) { // root initialized
-                $code = $this->getNsCode($docs['xmlNamespace']);
-                $root = $this->dom->createElement($code.":".$docs['xmlName']);
+                $code = $this->getNsCode($xmlNamespace);
+                $root = $this->dom->createElement($code.":".$xmlName);
             } else { // creating root element
-                $code = $this->getNsCode($docs['xmlNamespace'], true);
-                $root = $this->dom->createElementNS($docs['xmlNamespace'], $code.":".$docs['xmlName']);
+                $code = $this->getNsCode($xmlNamespace, true);
+                $root = $this->dom->createElementNS($xmlNamespace, $code.":".$xmlName);
             }
             
             $dom->appendChild($root);
         } else {
             //print_r("No Namespace found \n");
-            $root = $this->dom->createElement($docs['xmlName']);
+            $root = $this->dom->createElement($xmlName);
             $dom->appendChild($root);
         }
         
         if ($rt === true) {
-            $this->rootTagName = $docs['xmlName'];
-            $this->rootNsName = $docs['xmlNamespace'];
+            $this->rootTagName = $xmlName;
+            $this->rootNsName = $xmlNamespace;
             $this->root = $root;
         }
         
@@ -144,25 +155,29 @@ class Php2Xml extends Common {
     
     
     private function addProperty($docs, $dom) {
-        if ($docs['value'] != '') {
+        $value          = isset($docs['value']) ? $docs['value'] : null;
+        $xmlName        = isset($docs['xmlName']) ? $docs['xmlName'] : null;
+        $xmlNamespace   = isset($docs['xmlNamespace']) ? $docs['xmlNamespace'] : null;
+
+        if ($value !== null && $value != '') {
             $el = "";
             
             if (array_key_exists('xmlNamespace', $docs)) {
-                $code = $this->getNsCode($docs['xmlNamespace']);
-                $el = $this->dom->createElement($code.":".$docs['xmlName']);
+                $code = $this->getNsCode($xmlNamespace);
+                $el = $this->dom->createElement($code.":".$xmlName);
             } else {
-                $el = $this->dom->createElement($docs['xmlName']);
+                $el = $this->dom->createElement($xmlName);
             }
             
-            if (is_object($docs['value'])) {
+            if (is_object($value)) {
                 //print_r("Value is object \n");
-                $el = $this->parseObjectValue($docs['value'], $el);
-            } elseif (is_string($docs['value'])) {
+                $el = $this->parseObjectValue($value, $el);
+            } elseif (is_string($value)) {
                 if (array_key_exists('xmlNamespace', $docs)) {
-                    $code = $this->getNsCode($docs['xmlNamespace']);
-                    $el = $this->dom->createElement($code.":".$docs['xmlName'], $docs['value']);
+                    $code = $this->getNsCode($xmlNamespace);
+                    $el = $this->dom->createElement($code.":".$xmlName, $value);
                 } else {
-                    $el = $this->dom->createElement($docs['xmlName'], $docs['value']);
+                    $el = $this->dom->createElement($xmlName, $value);
                 }
             } else {
                 //print_r("Value is not string");
@@ -189,57 +204,78 @@ class Php2Xml extends Common {
         
         $classDocs  = $this->parseDocComments($refl->getDocComment());
         $classProps = $refl->getProperties(); 
-        $namespace = $classDocs['xmlNamespace'];
+        $namespace = isset($classDocs['xmlNamespace']) ? $classDocs['xmlNamespace'] : null;
         //print_r($classProps);
         foreach($classProps as $prop) {
-            $propDocs = $this->parseDocComments($prop->getDocComment());
+            $propDocs           = $this->parseDocComments($prop->getDocComment());
+            $propXmlNamespace   = isset($propDocs['xmlNamespace']) ? $propDocs['xmlNamespace'] : null;
+            $propXmlName        = isset($propDocs['xmlName']) ? $propDocs['xmlName'] : null;
+            $propXmlType        = isset($propDocs['xmlType']) ? $propDocs['xmlType'] : null;
+            $propVar            = isset($propDocs['var']) ? $propDocs['var'] : null;
+            if (is_string($propXmlNamespace) && $propXmlNamespace !== '') {
+                $code = $this->getNsCode($propXmlNamespace);
+                $propXmlName = $code.":".$propXmlName;
+            }
             //print_r($prop->getDocComment());
             if (is_object($prop->getValue($obj))) {
-                $code = '';
                 //print($propDocs['xmlName']."\n");
-                if (array_key_exists('xmlNamespace', $propDocs)) {
-                    $code = $this->getNsCode($propDocs['xmlNamespace']);
-                    $el = $this->dom->createElement($code.":".$propDocs['xmlName']); 
-                    $el = $this->parseObjectValue($prop->getValue($obj), $el);
-                } else {
-                    $el = $this->dom->createElement($propDocs['xmlName']); 
-                    $el = $this->parseObjectValue($prop->getValue($obj), $el);
-                }
+                $el = $this->dom->createElement($propXmlName);
+                $el = $this->parseObjectValue($prop->getValue($obj), $el);
                 //print_r("Value is object in Parse\n");
                 
                 $element->appendChild($el);
             } else {
                 if ($prop->getValue($obj) != '') {
-                    if ($propDocs['xmlType'] == 'element') {
+                    if ($propXmlType == 'element') {
                         $el = '';
-                        $code = $this->getNsCode($propDocs['xmlNamespace']);
                         $value = $prop->getValue($obj);
                         
                         if (is_array($value)) {
-                            $this->logger->debug("Creating element:".$code.":".$propDocs['xmlName']);
+                            $this->logger->debug("Creating element:".$propXmlName);
                             $this->logger->debug(print_r($value, true));
-                            foreach ($value as $node) {
-                                $this->logger->debug(print_r($node, true));
-                                $el = $this->dom->createElement($code.":".$propDocs['xmlName']);
-                                $arrNode = $this->parseObjectValue($node, $el);
-                                $element->appendChild($arrNode);
+                            // if PHP type of the property is array, convert it recursively into appropriate XML tree
+                            if ($propVar === 'array') {
+                                $this->appendArrayToDomElement($value, $element, $this->dom);
+                            } else {
+                                foreach ($value as $node) {
+                                    $this->logger->debug(print_r($node, true));
+                                    $el = $this->dom->createElement($propXmlName);
+                                    $arrNode = $this->parseObjectValue($node, $el);
+                                    $element->appendChild($arrNode);
+                                }
                             }
-                            
+
                         } else {
-                            $el = $this->dom->createElement($code.":".$propDocs['xmlName'], $value);
+                            $el = $this->dom->createElement($propXmlName, $value);
                             $element->appendChild($el);
                         }
                         //print_r("Added element ".$propDocs['xmlName']." with NS = ".$propDocs['xmlNamespace']." \n");
-                    } elseif ($propDocs['xmlType'] == 'attribute') {
-                        $atr = $this->dom->createAttribute($propDocs['xmlName']);
+                    } elseif ($propXmlType == 'attribute') {
+                        $atr = $this->dom->createAttribute($propXmlName);
                         $text = $this->dom->createTextNode($prop->getValue($obj));
                         $atr->appendChild($text);
                         $element->appendChild($atr);
-                    } elseif ($propDocs['xmlType'] == 'value') {
+                    } elseif ($propXmlType == 'value') {
                         
                         $this->logger->debug(print_r($prop->getValue($obj), true));
-                        
-                        $txtNode = $this->dom->createTextNode($prop->getValue($obj));
+
+                        // handle CDATA, if CDATA tags are available
+                        if (
+                            strpos($prop->getValue($obj), '<![CDATA[') === 0
+                            && strpos($prop->getValue($obj), ']]>') !== false
+                        ) {
+                            // replace text <![CDATA[ and ]]>
+                            $cdataValue = str_replace(
+                                array('<![CDATA[', ']]>'),
+                                array('', ''),
+                                $prop->getValue($obj)
+                            );
+                            $txtNode = $this->dom->createCDATASection($cdataValue);
+                        } else {
+                            // normal handling
+                            $txtNode = $this->dom->createTextNode($prop->getValue($obj));
+                        }
+
                         $element->appendChild($txtNode);
                     } 
                 }
@@ -247,5 +283,49 @@ class Php2Xml extends Common {
         }
         
         return $element;
+    }
+
+    protected function appendArrayToDomElement(array $data, \DOMElement $element, \DOMDocument $dom = null)
+    {
+        if (!$dom instanceof \DOMDocument) {
+            $dom = new \DOMDocument();
+        }
+
+        foreach ($data as $key => $value) {
+            if (is_int($key)) {
+                $parentElement = $element->parentNode;
+                if ($parentElement === null) {
+                    $key = 'index_' . $key;
+                    if (is_array($value)) {
+                        $newElement = $dom->createElement($key);
+                        $element->appendChild($newElement);
+                        $this->appendArrayToDomElement($value, $newElement, $dom);
+                        if( is_int(key($value)) ) {
+                            $element->removeChild($newElement);
+                        }
+                    } else {
+                        $newElement = $dom->createElement($key, $value);
+                        $element->appendChild($newElement);
+                    }
+                } elseif( is_array($value) ) {
+                    $newElement = $dom->createElement($element->nodeName);
+                    $parentElement->appendChild($newElement);
+                    $this->appendArrayToDomElement($value, $newElement, $dom);
+                } else {
+                    $newElement = $dom->createElement($element->nodeName, (string) $value);
+                    $parentElement->appendChild($newElement);
+                }
+            } elseif (is_array($value)) {
+                $newElement = $dom->createElement($key);
+                $element->appendChild($newElement);
+                $this->appendArrayToDomElement($value, $newElement, $dom);
+                if( is_int(key($value)) ) {
+                    $element->removeChild($newElement);
+                }
+            } else {
+                $newElement = $dom->createElement($key, (string) $value);
+                $element->appendChild($newElement);
+            }
+        }
     }
 }
