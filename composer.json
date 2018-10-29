@@ -4,8 +4,12 @@
     "description": "DESC moyarada/XSD-to-PHP DESC",
     "keywords": [ "shop" ],
     "homepage": "http://www.silversolutions.de/Produkte",
-    "license": "",
+    "license": "Apache-2.0",
     "authors": [
+        {
+            "name": "Mike Bevz",
+            "email": "myb@mikebevz.com"
+        },
         {
             "name": "silver.solutions GmbH",
             "homepage": "http://www.silversolutions.de/"
